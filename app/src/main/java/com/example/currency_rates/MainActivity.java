@@ -13,7 +13,7 @@ import java.util.Scanner;
 
 public class MainActivity extends AppCompatActivity {
 
-   public final String ADRESS = "https://www.cbr-xml-daily.ru/daily_json.js";
+   public final String ADDRESS = "https://www.cbr-xml-daily.ru/daily_json.js";
    private Thread thread;
    private Runnable run;
    private String json;
@@ -21,17 +21,36 @@ public class MainActivity extends AppCompatActivity {
    private Datas datas = null;
 
    public String getJson() throws IOException {
-      URL url = new URL(ADRESS);
-      HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-
-      InputStream is = httpCon.getInputStream();
-      Scanner scanner = new Scanner(is);
+      URL url = null;
+      HttpURLConnection conn = null;
+      InputStream is = null;
+      Scanner scanner = null;
       StringBuilder sb = new StringBuilder();
-      while (scanner.hasNext())
-         sb.append(scanner.next());
 
-      scanner.close();
-      return sb.toString();
+      try {
+         url = new URL(ADDRESS);
+         conn = (HttpURLConnection) url.openConnection();
+         conn.setReadTimeout(10000 /* milliseconds */);
+         conn.setConnectTimeout(15000 /* milliseconds */);
+         conn.setRequestMethod("GET");
+         conn.setDoInput(true);
+         // Starts the query
+         conn.connect();
+         int response = conn.getResponseCode();
+//         Log.d(DEBUG_TAG, "The response is: " + response);
+         is = conn.getInputStream();
+
+         scanner = new Scanner(is);
+         while (scanner.hasNext())
+            sb.append(scanner.next());
+
+         return sb.toString();
+      } finally {
+         if (is != null)
+            is.close();
+         if (scanner != null)
+            scanner.close();
+      }
    }
 
    @Override
@@ -41,16 +60,16 @@ public class MainActivity extends AppCompatActivity {
 
       init();
 //      downFrom();
-      parse();
-   }
-
-
-   private void downFrom() {
       try {
-         json = getJson();
+         parse();
       } catch (IOException e) {
          e.printStackTrace();
       }
+   }
+
+
+   private void downFrom() throws IOException {
+      json = getJson();
    }
 
    private void init() {
@@ -69,12 +88,8 @@ public class MainActivity extends AppCompatActivity {
       thread.start();
    }
 
-   private void parse() {
-      try {
-         datas = gson.fromJson(getJson(), Datas.class);
-      } catch (IOException e) {
-         e.printStackTrace();
-      }
+   private void parse() throws IOException {
+      datas = gson.fromJson(getJson(), Datas.class);
       System.out.println(datas);
 
       if (datas.Valute.isEmpty())
